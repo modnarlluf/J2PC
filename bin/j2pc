@@ -1,0 +1,85 @@
+#!/usr/bin/env php
+<?php
+
+include_once __DIR__.'/../vendor/autoload.php';
+
+use Symfony\Component\Console\Command\Command;
+
+class J2PCCommand extends Command
+{
+    protected function configure()
+    {
+        $this
+            ->setName('generate')
+            ->setDescription('Generate PHP classes from JSON string')
+            ->addOption(
+                'json',
+                null,
+                \Symfony\Component\Console\Input\InputOption::VALUE_OPTIONAL,
+                'JSON to parse.'
+            )
+            ->addOption(
+                'file',
+                null,
+                \Symfony\Component\Console\Input\InputOption::VALUE_OPTIONAL,
+                'Path to JSON to parse.'
+            )
+            ->addOption(
+                'baseClass',
+                null,
+                \Symfony\Component\Console\Input\InputOption::VALUE_OPTIONAL,
+                'Base class name.',
+                'BaseClass'
+            )
+            ->addOption(
+                'output',
+                null,
+                \Symfony\Component\Console\Input\InputOption::VALUE_OPTIONAL,
+                'Output folder for generated classes.'
+            )
+            ->addOption(
+                'namespace',
+                null,
+                \Symfony\Component\Console\Input\InputOption::VALUE_OPTIONAL,
+                'Namespace for generated classes.'
+            )
+        ;
+    }
+
+    protected function execute(\Symfony\Component\Console\Input\InputInterface $input, \Symfony\Component\Console\Output\OutputInterface $output)
+    {
+        if (! $json = $input->getOption('json')) {
+            if ($input->getOption('file') && file_exists($input->getOption('file'))) {
+                $json = file_get_contents($input->getOption('file'));
+            } else {
+                throw new \Exception('No input JSON or path to JSON', 2);
+            }
+        }
+
+        $generator = new \J2PC\Generator();
+        $classes = $generator->generateFromJson($json, $input->getOption('baseClass'), $input->getOption('namespace'));
+
+        if ($output = $input->getOption('output')) {
+            if (file_exists($input->getOption('output'))) {
+                $output = rtrim($output, '/');
+                foreach ($classes as $name => $class) {
+                    file_put_contents(
+                        sprintf('%s/%s.php', $output, $name),
+                        $class
+                    );
+                }
+            } else {
+                throw new \Exception('The output folder must exists.', 3);
+            }
+        } else {
+            foreach ($classes as $class) {
+                echo $class."\n\n";
+            }
+        }
+
+    }
+}
+
+$application = new \Symfony\Component\Console\Application();
+$application->add(new J2PCCommand());
+$application->run();

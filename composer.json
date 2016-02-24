@@ -1,0 +1,17 @@
+{
+    "name": "modnar/json2phpClass",
+    "description": "JSON to PHP classes generator",
+    "version": "0.1.0",
+    "type": "library",
+    "author": {
+        "name": "Brice Sigura",
+        "email": "brice.sigura@gmail.com"
+    },
+    "autoload": {
+        "psr-4": { "J2PC\\": "src/" }
+    },
+    "require": {
+        "phpunit/phpunit": "^5.2",
+        "symfony/console": "^3.0"
+    }
+}
