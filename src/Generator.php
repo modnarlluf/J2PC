@@ -21,7 +21,8 @@ class Generator
         ];
     }
 
-    private function buildRepresentation($o) {
+    private function buildRepresentation($o)
+    {
         $properties = [];
         foreach (get_object_vars($o) as $k => $var) {
             $type = $this->guessType($var);
@@ -31,9 +32,66 @@ class Generator
                 $properties[$k]['ref'] = $ref;
                 $className = $this->toCamelCase($k);
                 $this->processClass($var, $className, $ref);
+            } elseif ($type === 'array') {
+                $typesArray = $this->guessTypeArray($var);
+                if (count($typesArray) === 1) {
+                    $typeArray = $typesArray[0];
+                    if ($typeArray === 'class') {
+                        // TODO Check if same class by signature
+                        list($oneClass, $classes) = $this->arrayComposedBySameClass($var);
+                        if ($oneClass) {
+                            $ref = uniqid();
+                            $className = $this->toCamelCase(rtrim($k, 's'));
+                            $properties[$k] = ['type' => $className.'[]'];
+                            $this->processClass($var[0], $className, $ref);
+                        } else {
+                            foreach ($classes as $i => $class) {
+                                $ref = uniqid();
+                                $className = $this->toCamelCase(rtrim($k, 's').$i);
+                                $this->processClass($class, $className, $ref);
+                            }
+                            $properties[$k] = ['type' => 'mixed[]'];
+                        }
+                    } elseif ($typeArray === 'array') {
+                        // TODO nested array, need to extract the array representation
+                        $properties[$k] = ['type' => $typeArray.'[]'];
+                    } else {
+                        $properties[$k] = ['type' => $typeArray.'[]'];
+                    }
+                } else {
+                    if (in_array('class', $typesArray)) {
+                        // TODO generate mixed classes
+                    }
+                    $properties[$k] = ['type' => 'mixed[]'];
+                }
             }
         }
         return $properties;
+    }
+
+    private function arrayComposedBySameClass($array)
+    {
+        $classesCount = 0;
+        $classesStructures = [];
+        $classesBodies = [];
+        foreach ($array as $element) {
+            $structure = array_keys(get_object_vars($element));
+            if (!in_array($structure, $classesStructures)) {
+                $classesStructures[] = $structure;
+                $classesBodies[] = $element;
+                $classesCount++;
+            }
+        }
+        return [$classesCount === 1, $classesBodies];
+    }
+
+    private function guessTypeArray($array)
+    {
+        $types = [];
+        foreach ($array as $k => $element) {
+            $types[] = $this->guessType($element);
+        }
+        return array_unique($types);
     }
 
     private function guessType($var)
